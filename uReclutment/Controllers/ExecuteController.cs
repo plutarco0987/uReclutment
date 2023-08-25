@@ -12,6 +12,8 @@ using NuGet.Packaging.Signing;
 using NuGet.Protocol;
 using System;
 using System.IO;
+using System.Net.Mail;
+using System.Net;
 
 namespace uReclutment.Controllers
 {
@@ -301,6 +303,9 @@ namespace uReclutment.Controllers
             candidates.Country = resultCandidate[4];
             candidates.City = resultCandidate[3];
             candidates.ContactSource = resultCandidate[5];
+            string recluter= resultCandidate[7];
+            //this is the EMAIL 
+            candidates.Tags = resultCandidate[6];
             candidates.DateCreated = now;
             candidates.DateModified = now;
             candidates.RejectionCandidate = "";
@@ -310,7 +315,7 @@ namespace uReclutment.Controllers
             candidates.NameModified = "";
             candidates.Notes = "";
             candidates.QuestionDetails = new List<QuestionDetails>();
-            candidates.Tags = "";
+            
             candidates.VacancyId = vacancyId;
             candidates.RecluterName = "";
             candidates.Stages = stages;
@@ -356,8 +361,117 @@ namespace uReclutment.Controllers
                         await modelo.Archivo.CopyToAsync(stream);
                     }
                 }
-            }                     
+            }
+
+
+            SendEmail(candidates.Tags, recluter);
         }
+
+        /// <summary>
+        /// This methos is sending 2 emails one for the Candidate and another to the recluter for know who sent one information,
+        /// the email of that is just information, that format can be edited but we just pass the Name of the candidate
+        /// </summary>
+        /// <param name="emailTo"></param>
+        /// <param name="recluter"></param>
+        public async void SendEmail(string emailTo,string recluter,string nameCandidate)
+        {
+            string recluterEmail = "",recluterLink="";
+            recluterEmail = recluter + "EMAIL";
+            string recluterEmailSend = "", recluterLinkResult="";
+            recluterLink = recluter + "LINK";
+            IEnumerable<Settings> listSettings = await _unitOfWork.Context.Set<Settings>().ToListAsync();
+            List<Settings> list = listSettings.ToList();
+            string EmailFrom = "", EmailSubjectReset = "", EmailHost = "", SslEmail = "", EmailUseDefaultCredentials = "", PasswordEmail = "", Port = "",Body="", BodyRecluter="";
+            foreach (var item in list)
+            {
+                switch (item.Name)
+                {
+                    case "EmailFrom":
+                        EmailFrom = item.Value != null ? item.Value : "";
+                        break;
+                    case "EmailSubjectReset":
+                        EmailSubjectReset = item.Value != null ? item.Value : "";
+                        break;
+                    case "EmailHost":
+                        EmailHost = item.Value != null ? item.Value : "";
+                        break;
+                    case "SslEmail":
+                        SslEmail = item.Value != null ? item.Value : "";
+                        break;
+                    case "EmailUseDefaultCredentials":
+                        EmailUseDefaultCredentials = item.Value != null ? item.Value : "";
+                        break;
+                    case "PasswordEmail":
+                        PasswordEmail = item.Value != null ? item.Value : "";
+                        break;
+                    case "Port":
+                        Port = item.Value != null ? item.Value : "";
+                        break;
+                    case "Body":
+                        Body = item.Value != null ? item.Value : "";
+                        break;
+                    case "BodyRecluter":
+                        BodyRecluter = item.Value != null ? item.Value : "";
+                        break;
+                }
+                if(item.Name == recluterEmail)
+                {
+                    recluterEmailSend = item.Value != null ? item.Value : "";
+                }
+                if (item.Name == recluterLink)
+                {
+                    recluterLinkResult = item.Value != null ? item.Value : "";
+                }
+
+            } 
+
+            MailMessage message = new MailMessage();
+            message.From = new MailAddress(EmailFrom);
+            message.To.Add(new MailAddress(emailTo));
+            message.Subject = EmailSubjectReset;
+            message.IsBodyHtml = true;
+            message.Body = string.Format(Body, recluterLinkResult);
+
+            using (SmtpClient smtpClient = new SmtpClient())
+            {
+                smtpClient.EnableSsl = bool.Parse(SslEmail);
+                smtpClient.UseDefaultCredentials = bool.Parse(EmailUseDefaultCredentials);
+                smtpClient.Credentials = new NetworkCredential(EmailFrom, PasswordEmail);
+                smtpClient.Host = EmailHost;
+                smtpClient.Port = int.Parse(Port);
+                smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                //smtpClient.Host = "smtp.gmail.com";                               
+                //smtpClient.EnableSsl = true;                
+                //smtpClient.UseDefaultCredentials = false;
+                //smtpClient.Credentials = new NetworkCredential("lucerormzruiz.13@gamil.com", "ogzn-jrbi-jiyc-wjfo");
+                //smtpClient.Port = 587;                
+                smtpClient.Send(message);
+            }
+
+            message = new MailMessage();
+            message.From = new MailAddress(EmailFrom);
+            message.To.Add(new MailAddress(recluterEmailSend));
+            message.Subject = EmailSubjectReset;
+            message.IsBodyHtml = true;
+            message.Body = string.Format(BodyRecluter, nameCandidate);
+
+            using (SmtpClient smtpClient = new SmtpClient())
+            {
+                smtpClient.EnableSsl = bool.Parse(SslEmail);
+                smtpClient.UseDefaultCredentials = bool.Parse(EmailUseDefaultCredentials);
+                smtpClient.Credentials = new NetworkCredential(EmailFrom, PasswordEmail);
+                smtpClient.Host = EmailHost;
+                smtpClient.Port = int.Parse(Port);
+                smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                //smtpClient.Host = "smtp.gmail.com";                               
+                //smtpClient.EnableSsl = true;                
+                //smtpClient.UseDefaultCredentials = false;
+                //smtpClient.Credentials = new NetworkCredential("lucerormzruiz.13@gamil.com", "ogzn-jrbi-jiyc-wjfo");
+                //smtpClient.Port = 587;                
+                smtpClient.Send(message);
+            }
+        }
+
 
 
         [Route("GetActiveList/{type}")]
