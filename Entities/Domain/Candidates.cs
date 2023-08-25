@@ -101,7 +101,7 @@ namespace Entities.DataContext
         [JsonPropertyName("recluterName")]
         public string RecluterName { get; set; }
 
-
+        //NOTE: this will be use as EMAIL because we don't have more time 
         [JsonPropertyName("tags")]
         public string Tags { get; set; }
 
